@@ -7,6 +7,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   // Ensure that we can use the same aliases as in Vite
   webpack: (config) => {
     config.resolve.alias = {

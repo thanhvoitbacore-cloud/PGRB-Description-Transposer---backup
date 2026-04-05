@@ -109,7 +109,7 @@ export default function Home() {
     <div className="h-screen overflow-hidden bg-gradient-to-br from-pink-300 via-purple-300 to-blue-300 dark:from-pink-900 dark:via-purple-900 dark:to-blue-900 text-foreground flex flex-col">
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur-md shrink-0 z-50">
-        <div className="w-full max-w-[1400px] mx-auto flex flex-col md:flex-row items-center justify-between px-4 py-4 gap-4">
+        <div className="w-full max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-4 gap-4">
           <div className="flex items-center w-full md:w-auto justify-center md:justify-start">
             <div className="text-center md:text-left bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white px-6 py-2 rounded-2xl shadow-sm border border-fuchsia-500/30">
               <h1 className="text-lg font-extrabold tracking-tight">
@@ -141,7 +141,7 @@ export default function Home() {
       </header>
 
       {/* Main */}
-      <main className="w-full max-w-[1400px] px-4 pt-6 pb-24 flex-1 flex flex-col min-h-0 mx-auto">
+      <main className="w-full max-w-[1440px] px-4 md:px-8 pt-6 pb-24 flex-1 flex flex-col min-h-0 mx-auto">
         {state === "Ready" && (
           <div className="flex-1 flex flex-col items-center justify-center pb-12 w-full">
             <div className="max-w-4xl w-full mx-auto">

@@ -89,6 +89,18 @@ export function processWorkbook(workbook: XLSX.WorkBook): TransposedRow[] {
 
   const parseSheet = (name: string, index: number): { headers: string[]; rows: Record<string, string>[]; skuCol?: string; filterCol?: string; sheetName: string; sheetIndex: number } => {
     const ws = workbook.Sheets[name];
+    
+    // Dynamically recalculate !ref to prevent truncated data
+    let maxRow = 0;
+    let maxCol = 0;
+    for (const key in ws) {
+      if (key.startsWith("!")) continue;
+      const cell = XLSX.utils.decode_cell(key);
+      if (cell.r > maxRow) maxRow = cell.r;
+      if (cell.c > maxCol) maxCol = cell.c;
+    }
+    ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxRow, c: maxCol } });
+
     const raw: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: false });
     if (raw.length === 0) return { headers: [], rows: [], sheetName: name, sheetIndex: index };
 

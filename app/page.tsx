@@ -38,7 +38,30 @@ export default function Home() {
 
     try {
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
+      // Pre-patch worksheet XML: Wayfair exports often have a corrupted <dimension ref="...">
+      // that causes SheetJS to only load cells within that range (cells beyond it are never parsed).
+      // We patch the dimension tag to a huge safe range BEFORE SheetJS reads the zip, so all data loads.
+      let patchedBuffer: ArrayBuffer;
+      try {
+        const { default: JSZip } = await import("jszip");
+        const zip = await JSZip.loadAsync(buffer);
+        const sheetEntries = Object.keys(zip.files).filter(
+          (f) => f.startsWith("xl/worksheets/sheet") && f.endsWith(".xml")
+        );
+        for (const entry of sheetEntries) {
+          const xml = await zip.files[entry].async("string");
+          const patched = xml.replace(
+            /<dimension[^>]*ref="[^"]*"[^>]*\/>/,
+            '<dimension ref="A1:ZZ100000"/>'
+          );
+          zip.file(entry, patched);
+        }
+        patchedBuffer = await zip.generateAsync({ type: "arraybuffer" });
+      } catch {
+        // If JSZip fails for any reason, fall back to the original buffer
+        patchedBuffer = buffer;
+      }
+      const workbook = XLSX.read(patchedBuffer, { type: "array", sheetRows: 0 });
       const result = processWorkbook(workbook);
 
       setData(result);

@@ -198,6 +198,29 @@ export function processWorkbook(workbook: XLSX.WorkBook): TransposedRow[] {
     mainData.set(sku, { attrs, rowNum: row._excel_row });
   }
 
+  // Fallback pass: some products in the export don't have a row explicitly labeled
+  // "Wayfair SKU" in the Manufacturer Part Number column, but they still have valid
+  // Wayfair Listing values in their other rows. Capture any SKUs not yet in mainData.
+  if (main.filterCol) {
+    for (const row of main.rows) {
+      const sku = row[main.skuCol!];
+      if (isBlank(sku) || mainData.has(sku)) continue;
+
+      const attrs: Record<string, string> = {};
+
+      if (marketingCol) {
+        attrs[marketingCol] = row[marketingCol] || "";
+      }
+
+      for (const col of featureCols) {
+        const value = row[col] || "";
+        if (!isBlank(value)) attrs[col] = value;
+      }
+
+      mainData.set(sku, { attrs, rowNum: row._excel_row });
+    }
+  }
+
   const additionalSheets = scoredSheets.filter((s) => s.sheetName !== main.sheetName && s.score > 0);
   const additionalData = new Map<string, { value: string, rowNum: string, sheetName: string, sheetIndex: number }[]>();
 

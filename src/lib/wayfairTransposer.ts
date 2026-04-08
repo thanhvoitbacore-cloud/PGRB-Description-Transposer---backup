@@ -173,7 +173,35 @@ export function processWorkbook(workbook: XLSX.WorkBook): TransposedRow[] {
   const marketingCol = main.headers.find((h) => normalize(h).includes("marketing copy"));
   const featureCols = main.headers.filter((h) => bulletRegex.test(h));
 
-  const mainData = new Map<string, { attrs: Record<string, string>, rowNum: string }>();
+  const mainData = new Map<string, { attrs: Record<string, string>; rowNum: string }>();
+
+  const mergeRowIntoMainData = (sku: string, row: Record<string, string>) => {
+    if (mainData.has(sku)) {
+      // Merge: accumulate data from all rows for the same SKU
+      const existing = mainData.get(sku)!;
+      if (marketingCol) {
+        const newMarketing = row[marketingCol] || "";
+        if (!isBlank(newMarketing) && isBlank(existing.attrs[marketingCol] ?? "")) {
+          existing.attrs[marketingCol] = newMarketing;
+        }
+      }
+      for (const col of featureCols) {
+        const value = row[col] || "";
+        if (!isBlank(value)) existing.attrs[col] = value;
+      }
+    } else {
+      const attrs: Record<string, string> = {};
+      if (marketingCol) {
+        attrs[marketingCol] = row[marketingCol] || "";
+      }
+      for (const col of featureCols) {
+        const value = row[col] || "";
+        if (!isBlank(value)) attrs[col] = value;
+      }
+      mainData.set(sku, { attrs, rowNum: row._excel_row });
+    }
+  };
+
   for (const row of main.rows) {
     const sku = row[main.skuCol!];
     const filterValue = main.filterCol ? row[main.filterCol] : "";
@@ -184,40 +212,27 @@ export function processWorkbook(workbook: XLSX.WorkBook): TransposedRow[] {
       continue;
     }
 
-    const attrs: Record<string, string> = {};
-    
-    if (marketingCol) {
-      attrs[marketingCol] = row[marketingCol] || "";
-    }
-
-    for (const col of featureCols) {
-      const value = row[col] || "";
-      if (!isBlank(value)) attrs[col] = value;
-    }
-
-    mainData.set(sku, { attrs, rowNum: row._excel_row });
+    mergeRowIntoMainData(sku, row);
   }
 
   // Fallback pass: some products in the export don't have a row explicitly labeled
   // "Wayfair SKU" in the Manufacturer Part Number column, but they still have valid
   // Wayfair Listing values in their other rows. Capture any SKUs not yet in mainData.
+  // We also scan ALL rows for these SKUs to merge data from multiple rows.
   if (main.filterCol) {
+    // First, identify which SKUs need fallback
+    const fallbackSkus = new Set<string>();
     for (const row of main.rows) {
       const sku = row[main.skuCol!];
-      if (isBlank(sku) || mainData.has(sku)) continue;
-
-      const attrs: Record<string, string> = {};
-
-      if (marketingCol) {
-        attrs[marketingCol] = row[marketingCol] || "";
+      if (!isBlank(sku) && !mainData.has(sku)) {
+        fallbackSkus.add(sku);
       }
-
-      for (const col of featureCols) {
-        const value = row[col] || "";
-        if (!isBlank(value)) attrs[col] = value;
-      }
-
-      mainData.set(sku, { attrs, rowNum: row._excel_row });
+    }
+    // Then, collect and merge ALL rows for those SKUs
+    for (const row of main.rows) {
+      const sku = row[main.skuCol!];
+      if (isBlank(sku) || !fallbackSkus.has(sku)) continue;
+      mergeRowIntoMainData(sku, row);
     }
   }
 
